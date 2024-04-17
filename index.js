@@ -1,24 +1,48 @@
 const express = require("express");
 const app = express();
+const port = 3000;
 
-// Middleware pour logger les requêtes
-const loggerMiddleware = (req, res, next) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  
-  // Appel de next() pour passer au middleware suivant
+let publicUrls = ["/url1", "/url2", "/login"];
+
+function loggerMiddleware(req, res, next) {
+  console.log("New request !!!");
   next();
-};
+}
 
-// Utilisation du middleware pour toutes les requêtes entrantes
-app.use(loggerMiddleware);
+function myMiddleware(req, res, next) {
+  const requestedUrl = req.path;
 
-// Route de test
-app.get("/", (req, res) => {
-  res.send("Bonjour, ceci est la page d'accueil !");
+  if (publicUrls.includes(requestedUrl)) {
+    next();
+  } else {
+    const authToken = req.headers.authorization;
+    if (authToken && authToken === "Bearer 42") {
+      next();
+    } else {
+      //une route GET /restricted1 qui renvoie une erreur 403 si la requête ne contient pas le header “token” avec la valeur 42
+      res.status(403).send("Forbidden");
+    }
+  }
+}
+
+app.use(loggerMiddleware, myMiddleware);
+
+app.post("/login", (req, res) => {
+  res.json({ token: "42" });
 });
 
-// Démarrage du serveur
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Le serveur est en écoute sur le port ${PORT}`);
+app.get("/url1", (req, res) => {
+  res.send("URL 1 DIT Bonjour!");
+});
+
+app.get("/url2", (req, res) => {
+  res.send("URL 2 DIT Bonjour!");
+});
+
+app.get("/private/url1", (req, res) => {
+  res.send("Coucou, ceci est un secret.");
+});
+
+app.listen(port, () => {
+  console.log(`App listening on port ${port}`);
 });
